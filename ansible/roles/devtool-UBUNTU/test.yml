@@ -1,0 +1,6 @@
+---
+ - name: Configure NTP on CentOS/RHEL/Debian System
+   become: true
+   hosts: all
+   roles:
+    - {role: /home/cloud_user/dev-tools-setup/ansible/roles/devtool-UBUNTU}

@@ -1,2 +1,232 @@
 ---
-# tasks file for devtool-UBUNTU
+# tasks file for installing required environment
+- name: Install pre requisite for Ansible modules
+  yum:
+   name: unzip
+   state: latest
+  become: yes
+
+- name: Create terraform user
+  user:
+   name: "{{terraform_user}}"
+   password: "{{terraform_user_password}}"
+  become: yes
+
+- name: Create Terraform directory
+  file:
+   path: "{{terraform_dir}}"
+   state: directory
+   owner: "{{terraform_user}}"
+   group: "{{terraform_user}}"
+  register: terraform_directory
+  become: yes
+
+- name: Check terraform version
+  shell: "terraform version 2>&1 | head -n 1 | grep -q {{terraform_version}}"
+  failed_when: false
+  changed_when: false
+  register: terraform_versions_match
+
+- include: download.yml
+  when: terraform_versions_match.rc != 0
+
+- name: Install unzip to unarchive terraform
+  package:
+   name: unzip
+   state: present
+  become: yes
+
+- name: Unarchive Terraform archive
+  unarchive:
+   src: /tmp/terraform-{{terraform_version}}.zip
+   dest: "{{terraform_dir}}"
+   copy: no
+  when: terraform_versions_match.rc != 0 or terraform_directory is changed
+  become: yes
+
+- name: Make terraform_user terraform directory owner
+  file:
+   path: "{{terraform_dir}}"
+   state: directory
+   owner: "{{terraform_user}}"
+   group: "{{terraform_user}}"
+   recurse: yes
+  become: yes
+
+- name: Adding terraform command to user path
+  file: 
+   src: "{{terraform_dir}}/terraform"
+   dest: /usr/bin/terraform
+   state: link
+  become: yes
+
+- name: install the latest version of Ansible
+  yum:
+   name: ansible
+   state: latest
+  become: yes
+
+- name: Downloading the Kubectl 1.17 version
+  get_url:
+   url: https://storage.googleapis.com/kubernetes-release/release/v1.17.0/bin/linux/amd64/kubectl
+   dest: "/home/{{terraform_user}}"
+   mode: '755'
+   owner: "{{terraform_user}}"
+  become: yes
+
+- name: Move the Kubectl binary in to your PATH.
+  command: mv "/home/{{terraform_user}}/kubectl" /usr/local/bin/kubectl
+  become: yes
+
+- name: Install required packages for the Docker installation 
+  apt:
+    name: apt-transport-https,ca-certificates,curl,gnupg-agent,software-properties-common
+    state: present
+
+- name: Download GPG Key for docker
+  shell: curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+  args:
+    warn: no
+
+- name: Add Stable docker Repository
+  command: add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable"
+  become: yes
+
+- name: Update repositories cache and install docker
+  apt:
+    name: docker-ce,docker-ce-cli,containerd.io
+
+- name: Installing GIT now on this server
+  apt:
+   name: git
+   state: latest
+  become: yes
+  
+- name: Downloading and extracting the Packer fron HASHICORP
+  unarchive:
+   src: https://releases.hashicorp.com/packer/1.5.4/packer_1.5.4_linux_amd64.zip
+   dest: "{{terraform_dir}}" 
+   remote_src: yes
+   owner: "{{terraform_user}}"
+   mode: '755'
+  become: yes
+
+- name: Check that the somefile.conf exists
+  stat:
+    path: /usr/bin/packer
+  register: stat_result
+
+- name: create soft link for the Packer binary
+  shell: ln -s /opt/terraform/packer /usr/bin/packer
+  args:
+    warn: no
+  become: yes
+  when: stat_result.stat.exists == False
+
+- name: Downloading and extracting the Helm fron HELM
+  unarchive:
+    src: https://get.helm.sh/helm-v3.1.0-linux-amd64.tar.gz 
+    dest: "{{terraform_dir}}"
+    remote_src: yes
+    owner: "{{terraform_user}}"
+    mode: '755'
+  become: yes
+
+- name: Moving Helm to user bin dir
+  command: mv "{{terraform_dir}}/linux-amd64/helm" /usr/local/bin/helm
+  become: yes
+
+- name: Install Python 3 and PIP3
+  apt:
+    name: python3,python3-pip
+    state: latest
+  become: yes
+
+- name: Install PIP3 module pre-commit.
+  command: pip3 install pre-commit
+  become: yes
+
+- name: Install AWS CLI module.
+  command: pip3 install awscli
+  become: yes
+
+- name: Downloading and extracting the GoLang fron Google
+  unarchive:
+    src: https://dl.google.com/go/go1.13.8.linux-amd64.tar.gz
+    dest: /usr/local/
+    remote_src: yes
+    owner: "{{terraform_user}}"
+    mode: '755'
+  become: yes
+
+- name: Adding GO LANG Path in the Profile file to set the Go path
+  lineinfile:
+    path: /home/terraform/.bashrc
+    line: export PATH=$PATH:/usr/local/go/bin
+  become: yes
+
+- name: Downloading and extracting the GoLang fron Google
+  unarchive:
+    src: https://releases.hashicorp.com/vagrant/2.2.7/vagrant_2.2.7_linux_amd64.zip
+    dest: "{{terraform_dir}}"
+    remote_src: yes
+    owner: "{{terraform_user}}"
+    mode: '755'
+  become: yes
+
+- name: Install Boto3 Library.
+  command: pip3 install boto3
+  become: yes
+
+
+- name: Downloading the AWS IAM Authenticator
+  get_url:
+    url: https://amazon-eks.s3-us-west-2.amazonaws.com/1.14.6/2019-08-22/bin/linux/amd64/aws-iam-authenticator
+    dest: "/home/{{terraform_user}}"
+    mode: '755'
+    owner: "{{terraform_user}}"
+  become: yes      
+            
+- name: Making Home dir for IAM Authenticator
+  command: mkdir -p "/home/{{terraform_user}}/bin"
+  args:
+    warn: false
+  become: yes
+    
+- name: Moving file to home dir
+  command: cp "/home/{{terraform_user}}/aws-iam-authenticator" "/home/{{terraform_user}}/bin"
+  become: yes
+
+- name: Adding IAM Authenticator Path in the Profile file to set the AWS Authenticator
+  lineinfile:
+    path: /home/terraform/.bashrc
+    line: export PATH=$PATH:/home/terraform/bin
+  become: yes
+
+- name: Download Visual Studio code for Ubuntu
+  get_url:
+    url: https://go.microsoft.com/fwlink/?LinkID=760868
+    dest: "{{terraform_dir}}"
+    mode: '755'
+    owner: "{{terraform_user}}"
+  become: yes
+
+- name: Installing Visual Studio code for Ubuntu.
+  command: apt-get install -y "{{terraform_dir}}/code_1.42.1-1581432938_amd64.deb"
+  args:
+     warn: false
+  become: yes
+
+- name: Downloading the VirtualBox6.1.2.
+  get_url:
+   url: https://download.virtualbox.org/virtualbox/6.1.2/virtualbox-6.1_6.1.2-135662~Ubuntu~xenial_amd64.deb
+   dest: "{{terraform_dir}}"
+   mode: '755'
+   owner: "{{terraform_user}}"
+  become: yes
+
+- name: Installing VirtualBox6.1.2.
+  command: apt-get install -y "{{terraform_dir}}/virtualbox-6.1_6.1.2-135662~Ubuntu~xenial_amd64.deb"
+  args:
+    warn: false
+  become: yes
