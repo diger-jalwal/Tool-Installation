@@ -1,5 +1,5 @@
 ---
- - name: Configure NTP on CentOS/RHEL/Debian System
+ - name: Installing and configuring various tools for the Development env
    become: true
    hosts: all
    roles:

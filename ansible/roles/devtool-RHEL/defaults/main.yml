@@ -1,2 +1,6 @@
 ---
 # defaults file for devtool-RHEL
+terraform_user: terraform
+terraform_version: 0.12.7
+terraform_dir: /opt/terraform
+terraform_user_password: $6$terraform$CUM7XVJANs2woHbJAqoWqzjABwg56Xp14cktx4OB2yerpGhLuqTv8Y6FUgLMcx1PPel45QEyf6BeZvZiYxTne/

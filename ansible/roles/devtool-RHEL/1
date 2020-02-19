@@ -188,8 +188,6 @@
             
 - name: Making Home dir for IAM Authenticator
   command: mkdir -p "/home/{{terraform_user}}/bin"
-  args:
-    warn: false
   become: yes
     
 - name: Moving file to home dir
@@ -204,8 +202,6 @@
   
 - name: Import Keys for the 64bit VS Code
   command: rpm --import https://packages.microsoft.com/keys/microsoft.asc
-  args:
-    warn: false
   become: yes 
      
 - name: Import Keys for the 64bit VS Code
@@ -227,7 +223,7 @@
   become: yes
   
 - name: check if package installed
-  command: echo $(vboxmanage --version)
+  command: rpm -q --qf "%{VERSION}\n" virtualbox
   args:
     warn: false
   register: package_installed
